@@ -1285,9 +1285,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"{BASH} -c 'source {self._ros_setup()} "
-            f"&& cd {self.current_workspace} "
-            f"&& colcon build --symlink-install 2>&1'",
+            f"{self._ros_src()}colcon build --symlink-install 2>&1",
             cwd=self.current_workspace
         )
 
@@ -1295,9 +1293,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"{BASH} -c 'source {self._ros_setup()} "
-            f"&& cd {self.current_workspace} "
-            f"&& colcon build --symlink-install 2>&1'",
+            f"{self._ros_src()}colcon build --symlink-install 2>&1",
             cwd=self.current_workspace
         )
 
@@ -1411,9 +1407,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         src = self.current_workspace / "src"
 
         self._run_cmd(
-            f"{BASH} -c 'source {self._ros_setup()} "
-            f"&& cd {src} "
-            f"&& ros2 pkg create --build-type {btype.currentText()} {deps_flag} {name} 2>&1'",
+            f"{self._ros_src()}ros2 pkg create --build-type {btype.currentText()} {deps_flag} {name} 2>&1",
             cwd=src,
             on_finish=self._refresh_tree
         )
@@ -1423,9 +1417,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not pkg:
             return
         self._run_cmd(
-            f"{BASH} -c 'source {self._ros_setup()} "
-            f"&& cd {self.current_workspace} "
-            f"&& colcon build --packages-select {pkg} --symlink-install 2>&1'",
+            f"{self._ros_src()}colcon build --packages-select {pkg} --symlink-install 2>&1",
             cwd=self.current_workspace
         )
 
