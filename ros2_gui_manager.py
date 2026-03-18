@@ -1069,6 +1069,12 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
                     break
         self._load_workspaces()
 
+    def _ros_setup(self):
+        """현재 distro의 setup.bash 경로. 없으면 빈 문자열"""
+        if not self.current_distro:
+            return ""
+        return _find_setup_bash(self.current_distro) or ""
+
     def _update_tool_buttons(self):
         enabled = bool(self.current_distro and self.current_workspace)
         for btn in self.tool_btns:
@@ -1252,7 +1258,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"bash -c 'source /opt/ros/{self.current_distro}/setup.bash "
+            f"bash -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -1262,7 +1268,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"bash -c 'source /opt/ros/{self.current_distro}/setup.bash "
+            f"bash -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -1378,7 +1384,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         src = self.current_workspace / "src"
 
         self._run_cmd(
-            f"bash -c 'source /opt/ros/{self.current_distro}/setup.bash "
+            f"bash -c 'source {self._ros_setup()} "
             f"&& cd {src} "
             f"&& ros2 pkg create --build-type {btype.currentText()} {deps_flag} {name} 2>&1'",
             cwd=src,
@@ -1390,7 +1396,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not pkg:
             return
         self._run_cmd(
-            f"bash -c 'source /opt/ros/{self.current_distro}/setup.bash "
+            f"bash -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --packages-select {pkg} --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -1650,7 +1656,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         tab_idx    = self.tab_widget.addTab(tab_output, tab_label)
         self.tab_widget.setCurrentIndex(tab_idx)
 
-        cmd = (f"source /opt/ros/{self.current_distro}/setup.bash "
+        cmd = (f"source {self._ros_setup()} "
                f"&& source {setup} "
                f"&& ros2 run {pkg_name} {node_name}"
                f"{' ' + extra_args if extra_args else ''}")
@@ -1873,7 +1879,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         tab_idx   = self.tab_widget.addTab(tab_output, tab_label)
         self.tab_widget.setCurrentIndex(tab_idx)
 
-        cmd = (f"source /opt/ros/{self.current_distro}/setup.bash "
+        cmd = (f"source {self._ros_setup()} "
                f"&& source {setup} "
                f"&& ros2 launch {pkg_name} {lf_name}"
                f"{' ' + extra_args if extra_args else ''}")
@@ -2196,7 +2202,9 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
                 ws_src = f"source {s} && "
         domain_id = os.environ.get("ROS_DOMAIN_ID", "0")
         env_inject = f"export ROS_DOMAIN_ID={domain_id} && "
-        init = f"{env_inject}source /opt/ros/{distro}/setup.bash && {ws_src}bash" if distro else f"{env_inject}bash"
+        setup_bash = _find_setup_bash(distro) if distro else None
+        ros_src = f"source {setup_bash} && " if setup_bash else ""
+        init = f"{env_inject}{ros_src}{ws_src}bash"
 
         if IS_MAC:
             # iTerm2가 설치된 경우 우선 사용, 없으면 Terminal.app
@@ -2249,7 +2257,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             return
         env = self.ros_env or get_ros_env(self.current_distro)
         subprocess.Popen(
-            ["bash", "-c", f"source /opt/ros/{self.current_distro}/setup.bash && rviz2"],
+            ["bash", "-c", f"source {self._ros_setup()} && rviz2"],
             env=env
         )
         self._log("[INFO] RViz2 launched")
@@ -2259,7 +2267,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             return
         env = self.ros_env or get_ros_env(self.current_distro)
         subprocess.Popen(
-            ["bash", "-c", f"source /opt/ros/{self.current_distro}/setup.bash && rqt"],
+            ["bash", "-c", f"source {self._ros_setup()} && rqt"],
             env=env
         )
         self._log("[INFO] rqt launched")
