@@ -203,7 +203,7 @@ class WorkerThread(QThread):
     def run(self):
         try:
             proc = subprocess.Popen(
-                self.cmd, shell=True,
+                [BASH, "-c", self.cmd],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 env=self.env, cwd=self.cwd,
                 text=True, bufsize=1
