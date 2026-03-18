@@ -1,6 +1,6 @@
 # ROS2 GUI Manager
 
-A single-file PyQt5 desktop tool for managing ROS2 workspaces, packages, and nodes — all from one window, without memorizing terminal commands.
+A PyQt5 desktop tool for managing ROS2 workspaces, packages, and nodes from one window, without memorizing terminal commands.
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![ROS2](https://img.shields.io/badge/ROS2-Humble%20%7C%20Iron%20%7C%20Jazzy-brightgreen)
@@ -45,7 +45,7 @@ A single-file PyQt5 desktop tool for managing ROS2 workspaces, packages, and nod
 
 ## Installation & Launch
 
-No installation required. Just run the single file.
+No installation required. Just run the launcher script.
 
 ```bash
 # Run directly
@@ -344,43 +344,34 @@ Written by the GUI on every Domain ID change. Read by `PROMPT_COMMAND` in `~/.ba
 
 ## Architecture Overview
 
+The app now keeps the user-facing launcher while splitting implementation into a small package:
+
+```text
+ros2_gui_manager.py              # launcher script + dependency check
+app/
+├── bootstrap.py                 # QApplication setup and app startup
+├── deps.py                      # PyQt5 dependency check / install prompt
+├── constants.py                 # shared platform/font constants
+├── ros_env.py                   # ROS2 distro discovery and sourced env helpers
+├── config_store.py              # config.json / .ros_domain_id persistence
+├── workers.py                   # WorkerThread / NodeWorkerThread
+├── templates.py                 # generated ROS2 Python node templates
+├── services.py                  # workspace/package/node filesystem operations
+├── project_index.py             # package/node/launch scanning and tree building
+├── integrations.py              # editor / terminal / RViz / rqt launchers
+└── ui/
+    ├── main_window.py           # MainWindow UI composition and event routing
+    └── widgets.py               # small reusable UI helpers
 ```
+
+High-level flow:
+
+```text
 ros2_gui_manager.py
-│
-├── _get_bash()                          # Selects bash 5.x on macOS (Homebrew)
-├── _get_ros2_search_paths()             # Multi-path ROS2 discovery
-├── _find_setup_bash(distro)             # Finds setup.bash across all paths
-├── _check_and_install_dependencies()   # PyQt5 auto-install (venv-aware)
-│
-├── Utilities
-│   ├── get_ros2_distros()              # Scans all candidate paths + sourced env
-│   ├── get_ros_env()                   # Sources distro setup.bash → env dict
-│   └── get_ws_env()                    # Merges distro + workspace env
-│
-├── WorkerThread (QThread)              # General command runner
-│                                       # Streams stdout in real time
-│
-├── NodeWorkerThread (QThread)          # Node / Launch process runner
-│   ├── Batched output buffering (500ms flush)
-│   └── kill_node()                     # SIGINT → SIGTERM → SIGKILL
-│
-├── NodeTemplates                       # Python node boilerplate generator
-│
-└── MainWindow (QMainWindow)
-    ├── _make_topbar()                  # Distro / Workspace / Domain ID selector
-    ├── _make_left_panel()              # PROJECT TREE (QTreeWidget)
-    ├── _make_action_area()             # Context-sensitive action panel (QStackedWidget)
-    │   ├── _page_workspace()
-    │   ├── _page_package()
-    │   ├── _page_node()
-    │   └── _page_launch()
-    ├── _make_output_panel()            # Tabbed terminal (QTabWidget)
-    ├── _ros_setup()                    # Returns setup.bash path for current distro
-    ├── _on_domain_id_changed()         # Updates env + writes ~/.ros_domain_id
-    ├── _setup_bashrc_prompt()          # Auto-adds PROMPT_COMMAND to ~/.bashrc
-    ├── _parse_node_params()            # Parses declare_parameter() calls
-    ├── _parse_launch_params()          # Parses DeclareLaunchArgument / <arg>
-    └── _apply_theme()                  # Auto dark / light theme from system palette
+  -> app.deps.check_and_install_dependencies()
+  -> app.bootstrap.main()
+  -> app.ui.main_window.MainWindow
+     -> ros_env / services / project_index / integrations / workers
 ```
 
 ---
