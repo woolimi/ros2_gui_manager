@@ -176,7 +176,7 @@ Select a workspace in the project tree, then use **Add Package** or the right-cl
 
 ### Node Management
 
-**Create a Node**  
+**Create a Node**
 Select a package, enter a node name, and the tool generates a ready-to-run Python node boilerplate.
 
 Files created automatically:
@@ -193,13 +193,13 @@ class MyNode(Node):
         self.timer = self.create_timer(0.5, self.timer_callback)
 ```
 
-**Run a Node**  
+**Run a Node**
 Select a node in the tree → click **Run Node**:
 1. A parameter dialog appears (`param:=value` format)
 2. The node runs in a dedicated tab via `ros2 run <pkg> <node>`
 3. Tab icon reflects the process state (`●` running / `■` stopped)
 
-**Edit Source**  
+**Edit Source**
 Installed editors (VS Code, Gedit, Kate, etc.) are auto-detected and used to open the node source file.
 
 ---
@@ -208,7 +208,7 @@ Installed editors (VS Code, Gedit, Kate, etc.) are auto-detected and used to ope
 
 `.py` and `.xml` launch files are displayed in the project tree under their respective packages.
 
-**Run a Launch File**  
+**Run a Launch File**
 Before execution, the tool parses launch arguments and displays them in a dialog.
 
 | File Format | Parsed Target |
@@ -217,7 +217,7 @@ Before execution, the tool parses launch arguments and displays them in a dialog
 | `.xml` | `<arg name="..." default="..."/>` |
 | `.yaml` | Top-level key-value pairs |
 
-Defaults are pre-filled and can be edited before launch.  
+Defaults are pre-filled and can be edited before launch.
 Internal command: `ros2 launch <pkg> <launch_file> [args...]`
 
 ---
@@ -258,14 +258,14 @@ The bottom panel is a VS Code-style tabbed terminal.
 | `⚙` | C++ node |
 | `📜` | Launch file |
 
-**Graceful Process Shutdown**  
+**Graceful Process Shutdown**
 Clicking the close button (X) on a running tab sends signals in sequence:
 
 ```
 SIGINT → wait 3s → SIGTERM → wait 2s → SIGKILL
 ```
 
-**Output Buffering**  
+**Output Buffering**
 To prevent GUI freezes from high-frequency log output, a batched update strategy is used.
 
 | Setting | Value |
