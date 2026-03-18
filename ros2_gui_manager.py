@@ -162,7 +162,7 @@ def get_ros_env(distro):
     setup_script = _find_setup_bash(distro)
     if not setup_script:
         return env
-    cmd = f"bash -c 'source {setup_script} && env'"
+    cmd = f"{BASH} -c 'source {setup_script} && env'"
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     for line in result.stdout.splitlines():
         if '=' in line:
@@ -177,7 +177,7 @@ def get_ws_env(distro, workspace):
     if setup.exists():
         ros_setup = _find_setup_bash(distro)
         src = f"source {ros_setup} && " if ros_setup else ""
-        cmd = f"bash -c '{src}source {setup} && env'"
+        cmd = f"{BASH} -c '{src}source {setup} && env'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         for line in result.stdout.splitlines():
             if '=' in line:
@@ -248,7 +248,7 @@ class NodeWorkerThread(QThread):
         import time
         try:
             self.proc = subprocess.Popen(
-                ["bash", "-c", self.cmd],
+                [BASH, "-c", self.cmd],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 env=self.env, cwd=self.cwd,
@@ -1279,7 +1279,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"bash -c 'source {self._ros_setup()} "
+            f"{BASH} -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -1289,7 +1289,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not self._require_ws():
             return
         self._run_cmd(
-            f"bash -c 'source {self._ros_setup()} "
+            f"{BASH} -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -1405,7 +1405,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         src = self.current_workspace / "src"
 
         self._run_cmd(
-            f"bash -c 'source {self._ros_setup()} "
+            f"{BASH} -c 'source {self._ros_setup()} "
             f"&& cd {src} "
             f"&& ros2 pkg create --build-type {btype.currentText()} {deps_flag} {name} 2>&1'",
             cwd=src,
@@ -1417,7 +1417,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         if not pkg:
             return
         self._run_cmd(
-            f"bash -c 'source {self._ros_setup()} "
+            f"{BASH} -c 'source {self._ros_setup()} "
             f"&& cd {self.current_workspace} "
             f"&& colcon build --packages-select {pkg} --symlink-install 2>&1'",
             cwd=self.current_workspace
@@ -2225,7 +2225,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         env_inject = f"export ROS_DOMAIN_ID={domain_id} && "
         setup_bash = _find_setup_bash(distro) if distro else None
         ros_src = f"source {setup_bash} && " if setup_bash else ""
-        init = f"{env_inject}{ros_src}{ws_src}bash"
+        init = f"{env_inject}{ros_src}{ws_src}{BASH}"
 
         if IS_MAC:
             # iTerm2가 설치된 경우 우선 사용, 없으면 Terminal.app
@@ -2249,9 +2249,9 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         for term in ["gnome-terminal", "xterm", "konsole", "x-terminal-emulator"]:
             if shutil.which(term):
                 if term == "gnome-terminal":
-                    subprocess.Popen([term, f"--working-directory={cwd}", "--", "bash", "-c", init])
+                    subprocess.Popen([term, f"--working-directory={cwd}", "--", BASH, "-c", init])
                 else:
-                    subprocess.Popen([term, "-e", f"bash -c '{init}'"])
+                    subprocess.Popen([term, "-e", f"{BASH} -c '{init}'"])
                 return
         self._log("[WARN] No terminal emulator found (gnome-terminal / xterm / konsole)")
 
@@ -2266,9 +2266,9 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
 
         for term in ["gnome-terminal", "xterm", "konsole"]:
             if shutil.which(term):
-                full = f"bash -c '{cmd}; echo; read -p \"[Press Enter to close]\""
+                full = f"{BASH} -c '{cmd}; echo; read -p \"[Press Enter to close]\""
                 if term == "gnome-terminal":
-                    subprocess.Popen([term, "--", "bash", "-c", f"bash -c \"{cmd}\"; read -p '[Press Enter]'"])
+                    subprocess.Popen([term, "--", BASH, "-c", f"{BASH} -c \"{cmd}\"; read -p '[Press Enter]'"])
                 else:
                     subprocess.Popen([term, "-e", full])
                 return
@@ -2278,7 +2278,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             return
         env = self.ros_env or get_ros_env(self.current_distro)
         subprocess.Popen(
-            ["bash", "-c", f"source {self._ros_setup()} && rviz2"],
+            [BASH, "-c", f"source {self._ros_setup()} && rviz2"],
             env=env
         )
         self._log("[INFO] RViz2 launched")
@@ -2288,7 +2288,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             return
         env = self.ros_env or get_ros_env(self.current_distro)
         subprocess.Popen(
-            ["bash", "-c", f"source {self._ros_setup()} && rqt"],
+            [BASH, "-c", f"source {self._ros_setup()} && rqt"],
             env=env
         )
         self._log("[INFO] rqt launched")
