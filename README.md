@@ -15,12 +15,14 @@ A single-file PyQt5 desktop tool for managing ROS2 workspaces, packages, and nod
 - [Installation & Launch](#installation--launch)
 - [UI Overview](#ui-overview)
 - [Features](#features)
+  - [ROS_DOMAIN_ID Control](#ros_domain_id-control)
   - [Workspace Management](#workspace-management)
   - [Package Management](#package-management)
   - [Node Management](#node-management)
   - [Launch File Management](#launch-file-management)
   - [External Tool Integration](#external-tool-integration)
   - [Tabbed Terminal](#tabbed-terminal)
+- [Platform Notes](#platform-notes)
 - [Configuration File](#configuration-file)
 - [Architecture Overview](#architecture-overview)
 - [Known Limitations](#known-limitations)
@@ -59,40 +61,72 @@ chmod +x ros2_gui_manager.py
 ## UI Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ◈ ROS2 GUI Manager   Distro [jazzy▾]  Workspace [~/ws▾]   │  ← Top Bar
-│                                     Terminal  RViz2  rqt    │
-├──────────────┬──────────────────────────────────────────────┤
-│ PROJECT TREE │                                              │
-│              │         Action Panel (context-sensitive)     │
-│  📁 ros2_ws  │   (Workspace / Package / Node / Launch)      │
-│  ├ 📦 pkg_a  │                                              │
-│  │  🔵 node1 │                                              │
-│  │  📜 launch│                                              │
-│  └ 📦 pkg_b  │                                              │
-│              │                                              │
-│  [+ New] [Open]                                             │
-├──────────────┴──────────────────────────────────────────────┤
-│ OUTPUT  ● 🔵 pkg_a/node1  ■ pkg_b/node2                     │  ← Tabbed Terminal
-│  $ colcon build ...                                         │
-│  [✓  OK] exit code: 0                                       │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  ◈ ROS2 GUI Manager  Distro [jazzy▾]  Workspace [~/ws▾]  Domain ID [0]│  ← Top Bar
+│                                          Terminal  RViz2  rqt         │
+├──────────────┬───────────────────────────────────────────────────────┤
+│ PROJECT TREE │                                                        │
+│              │          Action Panel (context-sensitive)              │
+│  📁 ros2_ws  │    (Workspace / Package / Node / Launch)               │
+│  ├ 📦 pkg_a  │                                                        │
+│  │  🔵 node1 │                                                        │
+│  │  📜 launch│                                                        │
+│  └ 📦 pkg_b  │                                                        │
+│              │                                                        │
+│  [+ New] [Open]                                                       │
+├──────────────┴───────────────────────────────────────────────────────┤
+│ OUTPUT  ● 🔵 pkg_a/node1  ■ pkg_b/node2                               │  ← Tabbed Terminal
+│  $ colcon build ...                                                   │
+│  [✓  OK] exit code: 0                                                 │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Features
 
+### ROS_DOMAIN_ID Control
+
+A **Domain ID** spinbox (range 0–232) is always visible in the top bar.
+
+- Changing the value immediately updates `ROS_DOMAIN_ID` for all child processes (nodes, launch files, terminal, RViz2, rqt)
+- The value is saved to `~/.ros_domain_id` so **all currently open terminals** reflect the change at the next prompt — no restart needed
+- On first run, `PROMPT_COMMAND` is automatically added to `~/.bashrc` to keep every terminal in sync
+
+**Terminal prompt integration**
+If your `~/.bashrc` sets `PS1` with `${ROS_DOMAIN_ID}`, the prompt will show the updated value after the next Enter key press in any terminal:
+
+```
+(ID: 5) user:~/ros2_ws$
+```
+
+To enable this, add the following to `~/.bashrc` (done automatically on first run):
+
+```bash
+PROMPT_COMMAND='export ROS_DOMAIN_ID=$(cat ~/.ros_domain_id 2>/dev/null || echo 0)'
+```
+
+---
+
 ### Workspace Management
 
-**Auto-detection**  
-Scans `/opt/ros/` to detect installed ROS2 distributions automatically.  
+**Auto-detection**
+Scans multiple paths to detect installed ROS2 distributions:
+
+| Path | Environment |
+|------|-------------|
+| `/opt/ros/` | Linux standard / Homebrew |
+| `$CONDA_PREFIX/opt/ros/` | RoboStack (conda) |
+| `/opt/homebrew/opt/ros/` | Homebrew Apple Silicon |
+| `/usr/local/opt/ros/` | Homebrew Intel Mac |
+| `$ROS_DISTRO` + `$AMENT_PREFIX_PATH` | Already-sourced environment |
+
 Default selection priority: Jazzy → Humble → Iron.
 
-**Create a New Workspace**  
+**Create a New Workspace**
 Enter a name and location — the tool creates `<path>/<name>/src/` and registers it in the config.
 
-**Open an Existing Workspace**  
+**Open an Existing Workspace**
 When selecting a folder, the tool validates the presence of `src/` and `install/setup.bash`, displaying warnings if anything looks off.
 
 **Build / Clean Actions**
@@ -181,9 +215,16 @@ Toolbar buttons are activated once both a **Distro** and a **Workspace** are sel
 
 | Button | Action |
 |--------|--------|
-| Terminal | Opens a ROS2-sourced terminal (tries gnome-terminal → xterm → konsole) |
+| Terminal | Opens a ROS2-sourced terminal with current `ROS_DOMAIN_ID` injected |
 | RViz2 | Launches `rviz2` |
 | rqt | Launches `rqt` |
+
+**Terminal launcher behavior by platform**
+
+| Platform | Priority |
+|----------|----------|
+| Linux | gnome-terminal → xterm → konsole → x-terminal-emulator |
+| macOS | iTerm2 (if installed) → Terminal.app |
 
 ---
 
@@ -237,6 +278,9 @@ The workspace list is persisted as a JSON file.
 }
 ```
 
+**ROS_DOMAIN_ID persistence**: `~/.ros_domain_id`
+Written by the GUI on every Domain ID change. Read by `PROMPT_COMMAND` in `~/.bashrc`.
+
 ---
 
 ## Architecture Overview
@@ -261,7 +305,7 @@ ros2_gui_manager.py
 ├── NodeTemplates                       # Python node boilerplate generator
 │
 └── MainWindow (QMainWindow)
-    ├── _make_topbar()                  # Distro / Workspace selector + tool buttons
+    ├── _make_topbar()                  # Distro / Workspace / Domain ID selector
     ├── _make_left_panel()              # PROJECT TREE (QTreeWidget)
     ├── _make_action_area()             # Context-sensitive action panel (QStackedWidget)
     │   ├── _page_workspace()
@@ -269,6 +313,9 @@ ros2_gui_manager.py
     │   ├── _page_node()
     │   └── _page_launch()
     ├── _make_output_panel()            # Tabbed terminal (QTabWidget)
+    ├── _ros_setup()                    # Returns setup.bash path for current distro
+    ├── _on_domain_id_changed()         # Updates env + writes ~/.ros_domain_id
+    ├── _setup_bashrc_prompt()          # Auto-adds PROMPT_COMMAND to ~/.bashrc
     ├── _parse_node_params()            # Parses declare_parameter() calls
     ├── _parse_launch_params()          # Parses DeclareLaunchArgument / <arg>
     └── _apply_theme()                  # Auto dark / light theme from system palette
