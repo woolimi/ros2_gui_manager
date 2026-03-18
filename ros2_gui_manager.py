@@ -1096,6 +1096,12 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             return ""
         return _find_setup_bash(self.current_distro) or ""
 
+    def _ros_src(self):
+        """'source /path/setup.bash && ' 문자열 반환.
+        setup.bash를 찾지 못하면 빈 문자열 (이미 sourced된 환경 가정)"""
+        setup = self._ros_setup()
+        return f"source {setup} && " if setup else ""
+
     def _update_tool_buttons(self):
         enabled = bool(self.current_distro and self.current_workspace)
         for btn in self.tool_btns:
