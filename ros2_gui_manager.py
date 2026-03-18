@@ -124,16 +124,22 @@ from PyQt5.QtGui import QFont, QColor, QIcon, QTextCursor
 # ─────────────────────────────────────────────
 
 def get_ros2_distros():
-    ros_path = Path("/opt/ros")
-    if not ros_path.exists():
-        return []
-    return sorted([d.name for d in ros_path.iterdir() if d.is_dir()])
+    distros = set()
+    for ros_path in _get_ros2_search_paths():
+        if ros_path.exists():
+            for d in ros_path.iterdir():
+                if d.is_dir() and (d / "setup.bash").exists():
+                    distros.add(d.name)
+    # 이미 source된 환경 (AMENT_PREFIX_PATH 설정된 경우)
+    if os.environ.get("ROS_DISTRO") and os.environ.get("AMENT_PREFIX_PATH"):
+        distros.add(os.environ["ROS_DISTRO"])
+    return sorted(distros)
 
 
 def get_ros_env(distro):
     env = os.environ.copy()
-    setup_script = f"/opt/ros/{distro}/setup.bash"
-    if not Path(setup_script).exists():
+    setup_script = _find_setup_bash(distro)
+    if not setup_script:
         return env
     cmd = f"bash -c 'source {setup_script} && env'"
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -148,7 +154,9 @@ def get_ws_env(distro, workspace):
     env = get_ros_env(distro)
     setup = Path(workspace) / "install" / "setup.bash"
     if setup.exists():
-        cmd = f"bash -c 'source /opt/ros/{distro}/setup.bash && source {setup} && env'"
+        ros_setup = _find_setup_bash(distro)
+        src = f"source {ros_setup} && " if ros_setup else ""
+        cmd = f"bash -c '{src}source {setup} && env'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         for line in result.stdout.splitlines():
             if '=' in line:
@@ -1051,7 +1059,7 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
     def _detect_ros2(self):
         distros = get_ros2_distros()
         if not distros:
-            self._log("[WARN] No ROS2 installation found in /opt/ros/")
+            self._log("[WARN] No ROS2 installation found (checked: /opt/ros, $CONDA_PREFIX/opt/ros, Homebrew paths)")
             self.distro_combo.addItem("(not found)")
         else:
             self.distro_combo.addItems(distros)
