@@ -17,6 +17,29 @@ from pathlib import Path
 IS_MAC = platform.system() == "Darwin"
 
 
+def _get_ros2_search_paths():
+    """ROS2가 설치될 수 있는 후보 경로 목록"""
+    paths = [Path("/opt/ros")]
+    # RoboStack / conda: $CONDA_PREFIX/opt/ros/
+    conda_prefix = os.environ.get("CONDA_PREFIX")
+    if conda_prefix:
+        paths.append(Path(conda_prefix) / "opt" / "ros")
+    # Homebrew (Apple Silicon: /opt/homebrew, Intel: /usr/local)
+    if IS_MAC:
+        paths.append(Path("/opt/homebrew/opt/ros"))
+        paths.append(Path("/usr/local/opt/ros"))
+    return paths
+
+
+def _find_setup_bash(distro):
+    """distro에 맞는 setup.bash 경로 반환, 없으면 None"""
+    for ros_path in _get_ros2_search_paths():
+        setup = ros_path / distro / "setup.bash"
+        if setup.exists():
+            return str(setup)
+    return None
+
+
 # ─────────────────────────────────────────────
 #  Startup Dependency Check
 # ─────────────────────────────────────────────
