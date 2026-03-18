@@ -1660,10 +1660,24 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
             ("Neovim (terminal)",    "xterm -e nvim"),
         ]
 
+        # Mac: xterm 대신 osascript로 Terminal.app에서 실행
+        if IS_MAC:
+            EDITOR_CANDIDATES = [
+                (label, f"osascript -e 'tell app \"Terminal\" to do script \"{exe}\"'" )
+                if cmd.startswith("xterm -e") else (label, cmd)
+                for label, cmd in EDITOR_CANDIDATES
+                for exe in [cmd.split()[-1]]
+            ]
+
         found = []
         for label, cmd in EDITOR_CANDIDATES:
             exe = cmd.split()[0]
-            if shutil.which(exe):
+            if IS_MAC and exe == "osascript":
+                # osascript는 항상 존재, 실제 에디터 존재 여부 확인
+                actual_exe = cmd.split('"')[-2].split()[0]
+                if shutil.which(actual_exe):
+                    found.append((label, cmd))
+            elif shutil.which(exe):
                 found.append((label, cmd))
 
         return found  # [(label, exec_cmd), ...]
@@ -2128,6 +2142,25 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
                 ws_src = f"source {s} && "
         init = f"source /opt/ros/{distro}/setup.bash && {ws_src}bash" if distro else "bash"
 
+        if IS_MAC:
+            # iTerm2가 설치된 경우 우선 사용, 없으면 Terminal.app
+            if Path("/Applications/iTerm.app").exists():
+                script = (
+                    f'tell application "iTerm2"\n'
+                    f'  create window with default profile\n'
+                    f'  tell current session of current window\n'
+                    f'    write text "cd {cwd} && {init}"\n'
+                    f'  end tell\n'
+                    f'end tell'
+                )
+            else:
+                script = (
+                    f'tell application "Terminal" to activate\n'
+                    f'tell application "Terminal" to do script "cd {cwd} && {init}"'
+                )
+            subprocess.Popen(["osascript", "-e", script])
+            return
+
         for term in ["gnome-terminal", "xterm", "konsole", "x-terminal-emulator"]:
             if shutil.which(term):
                 if term == "gnome-terminal":
@@ -2138,6 +2171,14 @@ QStatusBar {{ color: {fg_dim}; font-size: 11px; }}
         self._log("[WARN] No terminal emulator found (gnome-terminal / xterm / konsole)")
 
     def _launch_terminal_cmd(self, cmd):
+        if IS_MAC:
+            script = (
+                f'tell application "Terminal" to activate\n'
+                f'tell application "Terminal" to do script "{cmd}; read -p \'[Press Enter to close]\'"'
+            )
+            subprocess.Popen(["osascript", "-e", script])
+            return
+
         for term in ["gnome-terminal", "xterm", "konsole"]:
             if shutil.which(term):
                 full = f"bash -c '{cmd}; echo; read -p \"[Press Enter to close]\""
