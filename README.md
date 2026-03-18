@@ -5,7 +5,7 @@ A single-file PyQt5 desktop tool for managing ROS2 workspaces, packages, and nod
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![ROS2](https://img.shields.io/badge/ROS2-Humble%20%7C%20Iron%20%7C%20Jazzy-brightgreen)
 ![PyQt5](https://img.shields.io/badge/PyQt5-5.x-orange)
-![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)
 
 ---
 
@@ -33,13 +33,13 @@ A single-file PyQt5 desktop tool for managing ROS2 workspaces, packages, and nod
 
 | Item | Minimum Version |
 |------|----------------|
-| OS | Ubuntu 20.04+ (Linux only) |
+| OS | Ubuntu 20.04+ / macOS 12+ |
 | Python | 3.8+ |
 | ROS2 | Humble / Iron / Jazzy |
 | PyQt5 | 5.x (auto-installed on first run if missing) |
 
-> **Auto-install**: On first launch, if PyQt5 is not found, the tool prompts you to install it automatically via `pip`.  
-> Manual install: `pip install PyQt5` or `sudo apt install python3-pyqt5`
+> **Auto-install**: On first launch, if PyQt5 is not found, the tool prompts you to install it automatically via `pip`.
+> Works correctly inside a **Python virtual environment** — installs into the active venv automatically.
 
 ---
 
@@ -54,6 +54,19 @@ python3 ros2_gui_manager.py
 # Or grant execute permission and run
 chmod +x ros2_gui_manager.py
 ./ros2_gui_manager.py
+
+# Inside a virtual environment
+source ~/venv/ros/bin/activate
+python3 ros2_gui_manager.py
+```
+
+### macOS Prerequisites
+
+macOS ships with `/bin/bash` v3.2, which cannot run ROS2 setup scripts (requires bash 4.3+).
+Install a modern bash via Homebrew before running:
+
+```bash
+brew install bash
 ```
 
 ---
@@ -263,6 +276,52 @@ To prevent GUI freezes from high-frequency log output, a batched update strategy
 
 ---
 
+## Platform Notes
+
+### Linux (Ubuntu 20.04+)
+
+Fully supported. All features available out of the box.
+
+```bash
+# PyQt5 (if not installed)
+pip install PyQt5
+# or
+sudo apt install python3-pyqt5
+```
+
+### macOS (12+)
+
+Supported with the following prerequisites:
+
+```bash
+# Required: modern bash (macOS default is v3.2, incompatible with ROS2)
+brew install bash
+
+# ROS2 installation options:
+# Option 1 — Homebrew
+brew install ros-jazzy/ros/ros-base
+
+# Option 2 — RoboStack (conda)
+conda create -n ros2 python=3.11
+conda activate ros2
+conda install -c robostack-staging ros-jazzy-desktop
+```
+
+> The GUI auto-detects ROS2 in all of the above locations.
+> For RoboStack, activate the conda environment before launching the GUI.
+
+### Virtual Environment (venv / conda)
+
+Running inside a virtual environment is fully supported.
+PyQt5 auto-install uses `sys.executable`, so it installs into the active environment automatically.
+
+```bash
+source ~/venv/ros/bin/activate
+python3 ros2_gui_manager.py
+```
+
+---
+
 ## Configuration File
 
 The workspace list is persisted as a JSON file.
@@ -288,11 +347,14 @@ Written by the GUI on every Domain ID change. Read by `PROMPT_COMMAND` in `~/.ba
 ```
 ros2_gui_manager.py
 │
-├── _check_and_install_dependencies()   # PyQt5 auto-install on startup
+├── _get_bash()                          # Selects bash 5.x on macOS (Homebrew)
+├── _get_ros2_search_paths()             # Multi-path ROS2 discovery
+├── _find_setup_bash(distro)             # Finds setup.bash across all paths
+├── _check_and_install_dependencies()   # PyQt5 auto-install (venv-aware)
 │
 ├── Utilities
-│   ├── get_ros2_distros()              # Scans /opt/ros/
-│   ├── get_ros_env()                   # Sources distro setup.bash
+│   ├── get_ros2_distros()              # Scans all candidate paths + sourced env
+│   ├── get_ros_env()                   # Sources distro setup.bash → env dict
 │   └── get_ws_env()                    # Merges distro + workspace env
 │
 ├── WorkerThread (QThread)              # General command runner
@@ -325,10 +387,12 @@ ros2_gui_manager.py
 
 ## Known Limitations
 
-- **Linux only**: Relies on `/opt/ros/` paths and `bash`-based environment sourcing. Does not run on macOS or Windows.
+- **Windows**: Not supported. Relies on bash and POSIX process management.
 - **Python nodes only**: Node boilerplate generation is Python-only. C++ nodes must be written manually after package creation.
 - **One process per tab**: Each node run opens a new tab. Running the same node multiple times creates multiple tabs.
 - **Launch argument parsing**: Complex conditional arguments (`IfCondition`, dynamically generated args, etc.) may not be parsed correctly.
+- **macOS — bash required**: Homebrew bash must be installed (`brew install bash`) for ROS2 setup scripts to run correctly.
+- **RoboStack**: The conda environment must be activated before launching the GUI for auto-detection to work.
 
 ---
 
